@@ -1,0 +1,50 @@
+#!/usr/bin/env ruby
+require 'fileutils'
+require_relative '../lib/sanity_checker'
+require_relative '../lib/runner'
+
+# Convert a markdown file to an epub file
+class Main
+  def initialize(*args)
+    SanityChecker.dependency('ebook-convert')
+    SanityChecker.dependency('ebook-metadata-update')
+    @inputs = SanityChecker.extension(%w[md mkd markdown], args)
+  end
+
+  def run
+    @inputs.each do |input|
+      dirname = File.dirname(input)
+      extname = File.extname(input)
+      basename = File.basename(input, extname)
+      input_txt = File.join(dirname, "#{basename}.txt")
+      output = File.join(dirname, "#{basename}.epub")
+      cover = File.join(dirname, "#{basename}.jpg")
+
+      options = [
+        input_txt.shellescape,
+        output.shellescape,
+        '--formatting-type markdown',
+        '--paragraph-type off',
+        "--chapter '//h:h2'"
+      ]
+
+      if File.exist?(cover)
+        options << "--cover #{cover.shellescape}"
+        options << '--preserve-cover-aspect-ratio'
+      else
+        puts '⚠ Unable to find cover file'.yellow
+      end
+
+      puts '> Converting to a temporary .txt file'
+      FileUtils.cp(input, input_txt)
+      puts "> Converting #{basename} to .epub"
+      Runner.run('ebook-convert', options)
+      puts '> Removing temporary .txt file'
+      File.delete(input_txt)
+      puts '> Updating metadata'
+      Runner.run('ebook-metadata-update', [output.shellescape])
+      puts "✔ #{basename} converted".green
+    end
+  end
+end
+Main.new(*ARGV).run

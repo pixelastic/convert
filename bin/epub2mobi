@@ -1,0 +1,33 @@
+#!/usr/bin/env ruby
+require_relative '../lib/sanity_checker'
+require_relative '../lib/runner'
+
+# Convert an epub file to a mobi file
+class Main
+  def initialize(*args)
+    SanityChecker.dependency('ebook-convert')
+    SanityChecker.dependency('ebook-metadata-update')
+    @inputs = SanityChecker.extension('epub', args)
+  end
+
+  def run
+    @inputs.each do |input|
+      dirname = File.dirname(input)
+      extname = File.extname(input)
+      basename = File.basename(input, extname)
+      output = File.join(dirname, "#{basename}.mobi")
+
+      options = [
+        input.shellescape,
+        output.shellescape
+      ]
+
+      puts "> Converting #{basename} to .mobi"
+      Runner.run('ebook-convert', options)
+      puts '> Updating metadata'
+      Runner.run('ebook-metadata-update', [output.shellescape])
+      puts "✔ #{basename} converted".green
+    end
+  end
+end
+Main.new(*ARGV).run

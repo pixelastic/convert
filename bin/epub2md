@@ -1,0 +1,32 @@
+#!/usr/bin/env ruby
+require_relative '../lib/sanity_checker'
+require_relative '../lib/runner'
+
+# Convert an epub file to a markdown file
+class Main
+  def initialize(*args)
+    SanityChecker.dependency('ebook-convert')
+    @inputs = SanityChecker.extension('epub', args)
+  end
+
+  def run
+    @inputs.each do |input|
+      dirname = File.dirname(input)
+      extname = File.extname(input)
+      basename = File.basename(input, extname)
+      output_txt = File.join(dirname, "#{basename}.txt")
+      output_md = File.join(dirname, "#{basename}.md")
+
+      options = [
+        input.shellescape,
+        output_txt.shellescape
+      ]
+
+      puts "> Converting #{basename}"
+      Runner.run('ebook-convert', options)
+      File.rename(output_txt, output_md)
+      puts "✔ #{basename} converted".green
+    end
+  end
+end
+Main.new(*ARGV).run
